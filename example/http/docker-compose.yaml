@@ -1,0 +1,52 @@
+version: '3'
+services:
+  frontend:
+    image: golang:1.12-alpine3.9
+    container_name: service_a
+    ports:
+      - "8080:8080"
+    command:
+      /bin/sh -l -c "tail -f /dev/null"
+    environment:
+      # Tracing
+      - JAEGER_AGENT_ENDPOINT=jaeger:6381
+      - JAEGER_COLLECTOR_ENDPOINT=http://jaeger:14268/api/traces
+    volumes:
+      - ".:/build"
+  backend:
+    image: golang:1.12-alpine3.9
+    container_name: service_b
+    command:
+      /bin/sh -l -c "tail -f /dev/null"
+    environment:
+      # Tracing
+      - JAEGER_AGENT_ENDPOINT=jaeger:6381
+      - JAEGER_COLLECTOR_ENDPOINT=http://jaeger:14268/api/traces
+    volumes:
+      - ".:/build"
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    # Port  Protocol  Component Function
+    # 5775  UDP agent accept zipkin.thrift over compact thrift protocol
+    # 6831  UDP agent accept jaeger.thrift over compact thrift protocol
+    # 6832  UDP agent accept jaeger.thrift over binary thrift protocol
+    # 5778  HTTP  agent serve configs
+    # 16686 HTTP  query serve frontend
+    # 14268 HTTP  collector accept jaeger.thrift directly from clients
+    # 9411  HTTP  collector Zipkin compatible endpoint
+    ports:
+      - "5775/udp"
+      - "6831/udp"
+      - "6832/udp"
+      - "5778"
+      - "16686:16686"
+      - "14268"
+      - "9411"
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
